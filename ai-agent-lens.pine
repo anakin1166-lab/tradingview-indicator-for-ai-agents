@@ -17,7 +17,7 @@
 // Not financial advice. The indicator highlights potential setups. You make the decisions.
 
 //@version=6
-indicator("AI Agent Lens", shorttitle = "AI Lens", overlay = true, max_labels_count = 500, max_boxes_count = 500, max_lines_count = 500, max_bars_back = 50)
+indicator("AI Agent Lens", shorttitle = "AI Lens", overlay = true, max_labels_count = 500, max_boxes_count = 500, max_lines_count = 500)
 
 // ═════════════════════════════════════════════════════════════════════════════
 // INPUTS
@@ -178,16 +178,16 @@ f_num(float x, string fmt) =>
 f_bool(bool b) =>
     b ? "true" : "false"
 
-// Shape-based pattern for the candle i bars ago. Context (trend, location) is the agent's job.
-f_pattern(int i, float a) =>
-    float o   = open[i]
-    float h   = high[i]
-    float l   = low[i]
-    float c   = close[i]
-    float po  = open[i + 1]
-    float pc  = close[i + 1]
-    float pH  = high[i + 1]
-    float pL  = low[i + 1]
+// Shape-based pattern for the current candle. Context (trend, location) is the agent's job.
+f_pattern(float a) =>
+    float o   = open
+    float h   = high
+    float l   = low
+    float c   = close
+    float po  = open[1]
+    float pc  = close[1]
+    float pH  = high[1]
+    float pL  = low[1]
     float rng = h - l
     float body = math.abs(c - o)
     float up  = h - math.max(o, c)
@@ -215,25 +215,19 @@ f_pattern(int i, float a) =>
         p := c > o ? "WIDE_RANGE_BULL" : "WIDE_RANGE_BEAR"
     p
 
-// Compact JSON for the candle i bars ago
-f_candleJson(int i) =>
-    float o   = open[i]
-    float h   = high[i]
-    float l   = low[i]
-    float c   = close[i]
-    float rng = h - l
-    float a   = atrV[i]
-    string dir = c > o ? "bull" : c < o ? "bear" : "flat"
-    string s = '{"bars_ago":' + str.tostring(i)
-    s += ',"o":' + f_num(o, format.mintick)
-    s += ',"h":' + f_num(h, format.mintick)
-    s += ',"l":' + f_num(l, format.mintick)
-    s += ',"c":' + f_num(c, format.mintick)
-    s += ',"v":' + f_num(volume[i], "#.####")
+// JSON body for the current candle. Built on every bar so older candles are read from its history.
+f_candleBody(string pattern) =>
+    float rng = high - low
+    string dir = close > open ? "bull" : close < open ? "bear" : "flat"
+    string s = '"o":' + f_num(open, format.mintick)
+    s += ',"h":' + f_num(high, format.mintick)
+    s += ',"l":' + f_num(low, format.mintick)
+    s += ',"c":' + f_num(close, format.mintick)
+    s += ',"v":' + f_num(volume, "#.####")
     s += ',"dir":"' + dir + '"'
-    s += ',"body_pct":' + f_num(rng > 0 ? math.abs(c - o) / rng * 100 : 0.0, "#.#")
-    s += ',"range_atr":' + f_num(a > 0 ? rng / a : na, "#.##")
-    s += ',"pattern":"' + f_pattern(i, a) + '"}'
+    s += ',"body_pct":' + f_num(rng > 0 ? math.abs(close - open) / rng * 100 : 0.0, "#.#")
+    s += ',"range_atr":' + f_num(atrV > 0 ? rng / atrV : na, "#.##")
+    s += ',"pattern":"' + pattern + '"'
     s
 
 float cRng      = high - low
@@ -245,7 +239,9 @@ float cRangeAtr = atrV > 0 ? cRng / atrV : na
 float cClosePos = cRng > 0 ? (close - low) / cRng * 100 : 50.0
 float cGapPct   = close[1] > 0 ? (open - close[1]) / close[1] * 100 : na
 string cDir     = bullBar ? "bull" : bearBar ? "bear" : "flat"
-string cPattern = f_pattern(0, atrV)
+string cPattern = f_pattern(atrV)
+string candleBody = f_candleBody(cPattern)
+max_bars_back(candleBody, 12)
 
 // ═════════════════════════════════════════════════════════════════════════════
 // SETUPS AND TRADE TRACKING (closed bars only)
@@ -346,7 +342,7 @@ f_packet() =>
     // Recent candles, oldest first
     string rc = "["
     for k = recentCount - 1 to 0
-        rc += f_candleJson(k) + (k > 0 ? "," : "")
+        rc += '{"bars_ago":' + str.tostring(k) + "," + candleBody[k] + "}" + (k > 0 ? "," : "")
     pk += ',"recent_candles":' + rc + "]"
     // Context
     pk += ',"regime":"' + regime + '"'
@@ -370,8 +366,8 @@ f_packet() =>
     pk
 
 bool wantPacket = packetMode == "Every bar close" or (packetMode == "Setups and trade updates" and eventStr != "BAR_CLOSE")
+string packet = f_packet()
 if barstate.islast and (wantPacket or showPreview)
-    string packet = f_packet()
     if wantPacket
         alert(packet, alert.freq_once_per_bar_close)
     if showPreview
