@@ -56,7 +56,7 @@ Full field list: [docs/PACKET_SCHEMA.md](docs/PACKET_SCHEMA.md) · Example: [exa
 2. In TradingView, open the **Pine Editor** at the bottom of the chart.
 3. Delete the default code, paste, and click **Save**, then **Add to chart**.
 
-You'll see EMAs, key levels, LONG/SHORT score labels, entry/stop/target lines, and the **Agent Readout** panel on the right.
+You'll see the EMA ribbon, key levels, swing points and structure breaks, ▲ LONG / ▼ SHORT score labels, position boxes for every setup, and the **Agent Readout** panel on the right.
 
 ### Step 2. Create one alert (1 minute)
 
@@ -153,24 +153,32 @@ The example files are illustrative, not live market data or a real trade.
 
 ---
 
-## The Agent Readout panel
+## What you see on the chart
 
-Everything in the packet is also on the chart, in a panel built to be read at a glance by people and by agents that can see the screen:
-
-| Row | Shows |
+| Element | What it shows |
 |---|---|
-| Regime | `TREND_UP`, `TREND_DOWN`, `RANGE`, `HIGH_VOLATILITY` |
-| Long / Short score | 0 to 100 |
-| EMA stack · slope | `BULLISH · RISING` |
-| HTF bias | `UP`, `DOWN`, `FLAT`, `N/A` |
-| RSI, MACD, ADX, relative volume, ATR | Current values |
-| Candle | Direction and pattern |
-| Structure | Bias and breakout event |
-| Levels | Previous day high and low, VWAP |
-| Trade | Side, status, entry, stop, targets |
+| **Agent Readout panel** | Regime, long and short scores with progress bars, the five factors for each side, market context, the open trade with live R multiple, and the current agent signal |
+| **Position boxes** | Every setup is drawn like TradingView's long/short tool: a red risk box (entry to stop) and a green reward box (entry to target 2) with a dashed target 1 line. Boxes extend while the trade is open and stop where it closed |
+| **Price tags** | ENTRY, STOP, T1 and T2 tags on the right of the open trade |
+| **Setup labels** | ▲ LONG 81 / ▼ SHORT 77. Hover a label to see the factor breakdown behind the score |
+| **EMA ribbon** | EMA 20 and 50 with a green or red fill between them, and a glowing EMA 200 |
+| **Structure** | Confirmed swing highs and lows as dots, and BOS markers when price breaks them |
+| **Key levels** | Previous day high and low (PDH, PDL) and VWAP |
+| **Optional** | Candles colored by score, background shaded by regime |
+
+### The Agent Readout panel
+
+| Section | Rows |
+|---|---|
+| Header | AI AGENT LENS, symbol and timeframe |
+| Scores | Regime, long score and short score with 10-step bars |
+| Factors | Trend, momentum, strength, volume and higher timeframe, long versus short, each with a 5-step bar |
+| Market | EMA stack and slope, HTF bias, RSI zone, ADX strength, relative volume, volatility percentile, candle pattern, structure |
+| Trade | Position and status, entry with live R multiple, stop, targets |
+| Agent signal | ▲ LONG ACTIVE, ▼ SHORT ACTIVE, ◔ BUILDING (score within 15 points of the threshold) or ◌ NO SETUP |
 | State | `LENS\|HYPEUSDT.P\|60\|TREND_UP\|L92\|S0\|LONG:ACTIVE` |
 
-The same values also appear in TradingView's **Data Window**.
+Switch **Panel mode** to Compact to keep only the header, scores and agent signal. The same values also appear in TradingView's **Data Window**.
 
 ---
 
@@ -202,6 +210,10 @@ The short score mirrors it. A **setup** fires when a score crosses 70 on a close
 | Send JSON packet | Every bar close | Or only setups and trade updates, or off |
 | Recent candles in packet | 5 | 1 to 10 |
 | Show packet preview on chart | Off | Prints the live packet next to price, useful for checking your setup |
+| Panel mode | Full | Full or Compact |
+| Panel position, text size | Top right, Small | Where and how big the panel is |
+| Show position boxes | On | Risk and reward boxes for every setup |
+| Color candles by score | Off | Green or red candles when a side leads |
 
 ---
 
