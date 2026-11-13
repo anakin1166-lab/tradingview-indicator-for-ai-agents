@@ -385,7 +385,7 @@ alertcondition(openedShort, "AI Lens: SHORT setup", "AI Agent Lens: SHORT setup 
 // ═════════════════════════════════════════════════════════════════════════════
 pFast = plot(showEmas ? emaF : na, "EMA fast", color = color.new(C_CYAN, 10), linewidth = 1, display = display.pane)
 pMid  = plot(showEmas ? emaM : na, "EMA mid", color = color.new(C_WARN, 10), linewidth = 1, display = display.pane)
-fill(pFast, pMid, color = emaF > emaM ? color.new(C_BULL, 82) : color.new(C_BEAR, 82), title = "EMA ribbon", display = display.pane)
+fill(pFast, pMid, color = emaF > emaM ? color.new(C_BULL, 82) : color.new(C_BEAR, 82), title = "EMA ribbon")
 plot(showEmas ? emaS : na, "EMA slow glow", color = color.new(C_PURPLE, 85), linewidth = 7, display = display.pane)
 plot(showEmas ? emaS : na, "EMA slow", color = color.new(C_PURPLE, 0), linewidth = 2, display = display.pane)
 
