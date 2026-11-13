@@ -1,0 +1,465 @@
+// This source code is released under the MIT License: https://opensource.org/licenses/MIT
+// AI Agent Lens: a TradingView indicator built for AI agents.
+// https://github.com/roan-maverick/tradingview-indicator-for-ai-agents
+//
+// What it does
+//   Breaks down every closed candle into clean, structured data (candle anatomy, pattern,
+//   trend, momentum, strength, volume, volatility, market structure, key levels, regime,
+//   long and short confluence scores, and an ATR risk map) and sends it to any AI agent
+//   as one JSON packet per bar through a TradingView alert webhook.
+//
+// Design rules
+//   1. No repainting: setups, trade tracking and packets use closed bars only.
+//   2. Higher-timeframe and daily data are requested with the [1] + lookahead_on pattern,
+//      so they never peek into the future.
+//   3. Every value an agent needs is in the packet. No screenshots, no guessing.
+//
+// Not financial advice. The indicator highlights potential setups. You make the decisions.
+
+//@version=6
+indicator("AI Agent Lens", shorttitle = "AI Lens", overlay = true, max_labels_count = 500, max_bars_back = 50)
+
+// ═════════════════════════════════════════════════════════════════════════════
+// INPUTS
+// ═════════════════════════════════════════════════════════════════════════════
+string G_SIG  = "Signals"
+string G_TRD  = "Trend and momentum"
+string G_VOL  = "Volume and volatility"
+string G_STR  = "Structure and levels"
+string G_RSK  = "Risk map"
+string G_AGT  = "AI agent packet"
+string G_VIS  = "Display"
+
+int    scoreThreshold = input.int(70, "Setup score threshold", minval = 50, maxval = 100, group = G_SIG, tooltip = "A LONG or SHORT setup fires when its score crosses this value on a closed bar.")
+bool   blockHighVol   = input.bool(true, "Block setups in HIGH_VOLATILITY regime", group = G_SIG)
+string htfTf          = input.timeframe("240", "Higher timeframe", group = G_SIG, tooltip = "Must be higher than the chart timeframe. Otherwise the HTF factor is neutral.")
+int    htfEmaLen      = input.int(50, "Higher timeframe EMA length", minval = 2, group = G_SIG)
+
+int    emaFastLen     = input.int(20, "Fast EMA", minval = 2, group = G_TRD)
+int    emaMidLen      = input.int(50, "Mid EMA", minval = 2, group = G_TRD)
+int    emaSlowLen     = input.int(200, "Slow EMA", minval = 2, group = G_TRD)
+int    slopeLen       = input.int(5, "Slow EMA slope lookback (bars)", minval = 1, group = G_TRD)
+int    rsiLen         = input.int(14, "RSI length", minval = 2, group = G_TRD)
+float  rsiOB          = input.float(75, "RSI overbought", group = G_TRD)
+float  rsiOS          = input.float(25, "RSI oversold", group = G_TRD)
+int    adxLen         = input.int(14, "ADX / DMI length", minval = 2, group = G_TRD)
+float  adxTrend       = input.float(20, "ADX trend threshold", group = G_TRD)
+
+int    volLen         = input.int(20, "Volume average length", minval = 2, group = G_VOL)
+int    atrLen         = input.int(14, "ATR length", minval = 2, group = G_VOL)
+int    atrPctLen      = input.int(100, "ATR percentile lookback", minval = 10, group = G_VOL)
+float  highVolPct     = input.float(90, "HIGH_VOLATILITY when ATR percentile is at or above", minval = 50, maxval = 100, group = G_VOL)
+
+int    swingLen       = input.int(5, "Swing pivot strength (bars each side)", minval = 1, group = G_STR)
+
+float  stopAtr        = input.float(1.5, "Stop distance (x ATR)", minval = 0.1, step = 0.1, group = G_RSK)
+float  t1R            = input.float(1.5, "Target 1 (R multiple)", minval = 0.1, step = 0.1, group = G_RSK)
+float  t2R            = input.float(3.0, "Target 2 (R multiple)", minval = 0.1, step = 0.1, group = G_RSK)
+
+string packetMode     = input.string("Every bar close", "Send JSON packet", options = ["Every bar close", "Setups and trade updates", "Off"], group = G_AGT, tooltip = "Create ONE alert with condition 'Any alert() function call' and your agent's webhook URL.")
+int    recentCount    = input.int(5, "Recent candles in packet", minval = 1, maxval = 10, group = G_AGT)
+bool   showPreview    = input.bool(false, "Show packet preview on chart", group = G_AGT)
+
+bool   showPanel      = input.bool(true, "Show Agent Readout panel", group = G_VIS)
+string panelPosIn     = input.string("Top right", "Panel position", options = ["Top right", "Top left", "Bottom right", "Bottom left"], group = G_VIS)
+string panelSizeIn    = input.string("Small", "Panel text size", options = ["Tiny", "Small", "Normal"], group = G_VIS)
+bool   showMarkers    = input.bool(true, "Show setup markers", group = G_VIS)
+bool   showTrade      = input.bool(true, "Show entry, stop and targets", group = G_VIS)
+bool   showEmas       = input.bool(true, "Show EMAs", group = G_VIS)
+bool   showLevels     = input.bool(true, "Show levels (previous day, VWAP, swings)", group = G_VIS)
+bool   showRegimeBg   = input.bool(false, "Shade background by regime", group = G_VIS)
+
+// ═════════════════════════════════════════════════════════════════════════════
+// COLORS
+// ═════════════════════════════════════════════════════════════════════════════
+color C_BULL  = #00C853
+color C_BEAR  = #FF1744
+color C_NEUT  = #9E9E9E
+color C_WARN  = #FFAB00
+color C_BG    = #131722
+color C_HEAD  = #1E222D
+color C_TEXT  = #D1D4DC
+
+// ═════════════════════════════════════════════════════════════════════════════
+// CORE CALCULATIONS
+// ═════════════════════════════════════════════════════════════════════════════
+float emaF = ta.ema(close, emaFastLen)
+float emaM = ta.ema(close, emaMidLen)
+float emaS = ta.ema(close, emaSlowLen)
+float rsiV = ta.rsi(close, rsiLen)
+[macdLine, macdSignal, macdHist] = ta.macd(close, 12, 26, 9)
+[diPlus, diMinus, adxV] = ta.dmi(adxLen, adxLen)
+float atrV    = ta.atr(atrLen)
+float atrPct  = ta.percentrank(atrV, atrPctLen)
+float volAvg  = ta.sma(volume, volLen)
+float relVol  = volAvg > 0 ? volume / volAvg : na
+float vwapV   = ta.vwap(hlc3)
+
+// Previous day high and low (no lookahead leak)
+float pdh = request.security(syminfo.tickerid, "D", high[1], lookahead = barmerge.lookahead_on)
+float pdl = request.security(syminfo.tickerid, "D", low[1], lookahead = barmerge.lookahead_on)
+
+// Higher-timeframe bias (no lookahead leak)
+bool htfValid = timeframe.in_seconds(htfTf) > timeframe.in_seconds()
+[htfClose, htfEma] = request.security(syminfo.tickerid, htfTf, [close[1], ta.ema(close, htfEmaLen)[1]], lookahead = barmerge.lookahead_on)
+int htfBias = not htfValid ? 0 : htfClose > htfEma ? 1 : htfClose < htfEma ? -1 : 0
+string htfBiasStr = not htfValid ? "N/A" : htfBias == 1 ? "UP" : htfBias == -1 ? "DOWN" : "FLAT"
+
+// Trend description
+string stackStr = emaF > emaM and emaM > emaS ? "BULLISH" : emaF < emaM and emaM < emaS ? "BEARISH" : "MIXED"
+string slopeStr = emaS > emaS[slopeLen] ? "RISING" : emaS < emaS[slopeLen] ? "FALLING" : "FLAT"
+
+// ═════════════════════════════════════════════════════════════════════════════
+// REGIME
+// ═════════════════════════════════════════════════════════════════════════════
+bool trendUp   = close > emaS and emaS > emaS[slopeLen] and adxV >= adxTrend
+bool trendDown = close < emaS and emaS < emaS[slopeLen] and adxV >= adxTrend
+bool highVol   = atrPct >= highVolPct
+string regime  = highVol ? "HIGH_VOLATILITY" : trendUp ? "TREND_UP" : trendDown ? "TREND_DOWN" : "RANGE"
+int regimeCode = highVol ? 2 : trendUp ? 1 : trendDown ? -1 : 0
+
+// ═════════════════════════════════════════════════════════════════════════════
+// CONFLUENCE SCORES (0 to 100, five factors worth 20 points each)
+// ═════════════════════════════════════════════════════════════════════════════
+bool bullBar = close > open
+bool bearBar = close < open
+
+int lTrend = (emaF > emaM ? 7 : 0) + (emaM > emaS ? 7 : 0) + (close > emaF ? 6 : 0)
+int sTrend = (emaF < emaM ? 7 : 0) + (emaM < emaS ? 7 : 0) + (close < emaF ? 6 : 0)
+
+int lMom = (rsiV > 50 ? (rsiV >= rsiOB ? 4 : 10) : 0) + (macdHist > 0 ? 5 : 0) + (macdHist > macdHist[1] ? 5 : 0)
+int sMom = (rsiV < 50 ? (rsiV <= rsiOS ? 4 : 10) : 0) + (macdHist < 0 ? 5 : 0) + (macdHist < macdHist[1] ? 5 : 0)
+
+int lStr = (diPlus > diMinus ? 10 : 0) + (diPlus > diMinus and adxV >= adxTrend ? 10 : 0)
+int sStr = (diMinus > diPlus ? 10 : 0) + (diMinus > diPlus and adxV >= adxTrend ? 10 : 0)
+
+int lVol = bullBar and relVol >= 1.5 ? 20 : bullBar and relVol >= 1.0 ? 12 : bullBar ? 6 : 0
+int sVol = bearBar and relVol >= 1.5 ? 20 : bearBar and relVol >= 1.0 ? 12 : bearBar ? 6 : 0
+
+int lHtf = htfBias == 1 ? 20 : htfBias == 0 ? 10 : 0
+int sHtf = htfBias == -1 ? 20 : htfBias == 0 ? 10 : 0
+
+int longScore  = lTrend + lMom + lStr + lVol + lHtf
+int shortScore = sTrend + sMom + sStr + sVol + sHtf
+
+// ═════════════════════════════════════════════════════════════════════════════
+// MARKET STRUCTURE (confirmed swing pivots, no repainting)
+// ═════════════════════════════════════════════════════════════════════════════
+float ph = ta.pivothigh(high, swingLen, swingLen)
+float pl = ta.pivotlow(low, swingLen, swingLen)
+var float swingH1 = na
+var float swingH2 = na
+var float swingL1 = na
+var float swingL2 = na
+if not na(ph)
+    swingH2 := swingH1
+    swingH1 := ph
+if not na(pl)
+    swingL2 := swingL1
+    swingL1 := pl
+
+string structBias = swingH1 > swingH2 and swingL1 > swingL2 ? "BULLISH" : swingH1 < swingH2 and swingL1 < swingL2 ? "BEARISH" : "MIXED"
+bool breakUp   = not na(swingH1) and close > swingH1 and close[1] <= swingH1
+bool breakDown = not na(swingL1) and close < swingL1 and close[1] >= swingL1
+string structEvent = breakUp ? "BREAK_UP" : breakDown ? "BREAK_DOWN" : "NONE"
+
+// ═════════════════════════════════════════════════════════════════════════════
+// CANDLE ANATOMY
+// ═════════════════════════════════════════════════════════════════════════════
+f_num(float x, string fmt) =>
+    na(x) ? "null" : str.tostring(x, fmt)
+
+f_bool(bool b) =>
+    b ? "true" : "false"
+
+// Shape-based pattern for the candle i bars ago. Context (trend, location) is the agent's job.
+f_pattern(int i, float a) =>
+    float o   = open[i]
+    float h   = high[i]
+    float l   = low[i]
+    float c   = close[i]
+    float po  = open[i + 1]
+    float pc  = close[i + 1]
+    float pH  = high[i + 1]
+    float pL  = low[i + 1]
+    float rng = h - l
+    float body = math.abs(c - o)
+    float up  = h - math.max(o, c)
+    float dn  = math.min(o, c) - l
+    string p  = "NONE"
+    if rng <= 0
+        p := "FLAT"
+    else if c > o and pc < po and c >= po and o <= pc
+        p := "BULLISH_ENGULFING"
+    else if c < o and pc > po and o >= pc and c <= po
+        p := "BEARISH_ENGULFING"
+    else if body / rng <= 0.1
+        p := "DOJI"
+    else if dn >= 2 * body and up <= 0.15 * rng
+        p := "HAMMER"
+    else if up >= 2 * body and dn <= 0.15 * rng
+        p := "SHOOTING_STAR"
+    else if body / rng >= 0.9
+        p := c > o ? "BULLISH_MARUBOZU" : "BEARISH_MARUBOZU"
+    else if h < pH and l > pL
+        p := "INSIDE_BAR"
+    else if h > pH and l < pL
+        p := "OUTSIDE_BAR"
+    else if a > 0 and rng >= 1.8 * a
+        p := c > o ? "WIDE_RANGE_BULL" : "WIDE_RANGE_BEAR"
+    p
+
+// Compact JSON for the candle i bars ago
+f_candleJson(int i) =>
+    float o   = open[i]
+    float h   = high[i]
+    float l   = low[i]
+    float c   = close[i]
+    float rng = h - l
+    float a   = atrV[i]
+    string dir = c > o ? "bull" : c < o ? "bear" : "flat"
+    string s = '{"bars_ago":' + str.tostring(i)
+    s += ',"o":' + f_num(o, format.mintick)
+    s += ',"h":' + f_num(h, format.mintick)
+    s += ',"l":' + f_num(l, format.mintick)
+    s += ',"c":' + f_num(c, format.mintick)
+    s += ',"v":' + f_num(volume[i], "#.####")
+    s += ',"dir":"' + dir + '"'
+    s += ',"body_pct":' + f_num(rng > 0 ? math.abs(c - o) / rng * 100 : 0.0, "#.#")
+    s += ',"range_atr":' + f_num(a > 0 ? rng / a : na, "#.##")
+    s += ',"pattern":"' + f_pattern(i, a) + '"}'
+    s
+
+float cRng      = high - low
+float cBody     = math.abs(close - open)
+float cBodyPct  = cRng > 0 ? cBody / cRng * 100 : 0.0
+float cUpPct    = cRng > 0 ? (high - math.max(open, close)) / cRng * 100 : 0.0
+float cDnPct    = cRng > 0 ? (math.min(open, close) - low) / cRng * 100 : 0.0
+float cRangeAtr = atrV > 0 ? cRng / atrV : na
+float cClosePos = cRng > 0 ? (close - low) / cRng * 100 : 50.0
+float cGapPct   = close[1] > 0 ? (open - close[1]) / close[1] * 100 : na
+string cDir     = bullBar ? "bull" : bearBar ? "bear" : "flat"
+string cPattern = f_pattern(0, atrV)
+
+// ═════════════════════════════════════════════════════════════════════════════
+// SETUPS AND TRADE TRACKING (closed bars only)
+// ═════════════════════════════════════════════════════════════════════════════
+bool longCond  = longScore >= scoreThreshold and longScore[1] < scoreThreshold and regime != "TREND_DOWN" and not (blockHighVol and regime == "HIGH_VOLATILITY")
+bool shortCond = shortScore >= scoreThreshold and shortScore[1] < scoreThreshold and regime != "TREND_UP" and not (blockHighVol and regime == "HIGH_VOLATILITY")
+bool longSig   = longCond and not shortCond and barstate.isconfirmed
+bool shortSig  = shortCond and not longCond and barstate.isconfirmed
+
+var int    tSide     = 0
+var string tSideStr  = "NONE"
+var string tStatus   = "NONE"
+var float  tEntry    = na
+var float  tStop     = na
+var float  tT1       = na
+var float  tT2       = na
+var int    tBar      = na
+var int    lastSigBar  = na
+var string lastSigSide = "NONE"
+bool tradeUpdate = false
+bool openedLong  = false
+bool openedShort = false
+
+if barstate.isconfirmed
+    string statusBefore = tStatus
+    // 1) Update the open trade with this bar's range (stop checked first: conservative)
+    if tSide != 0 and bar_index > tBar
+        if tSide == 1
+            if low <= tStop
+                tStatus := tStatus == "TARGET_1_HIT" ? "STOPPED_AFTER_T1" : "STOPPED"
+                tSide := 0
+            else if high >= tT2
+                tStatus := "TARGET_2_HIT"
+                tSide := 0
+            else if high >= tT1 and tStatus == "ACTIVE"
+                tStatus := "TARGET_1_HIT"
+        else
+            if high >= tStop
+                tStatus := tStatus == "TARGET_1_HIT" ? "STOPPED_AFTER_T1" : "STOPPED"
+                tSide := 0
+            else if low <= tT2
+                tStatus := "TARGET_2_HIT"
+                tSide := 0
+            else if low <= tT1 and tStatus == "ACTIVE"
+                tStatus := "TARGET_1_HIT"
+    // 2) Open a new setup. A setup in the same direction as an open trade is ignored;
+    //    an opposite setup replaces the open trade.
+    if longSig and tSide != 1
+        openedLong := true
+        tSide := 1
+        tSideStr := "LONG"
+        tEntry := close
+        tStop := close - stopAtr * atrV
+        float riskL = tEntry - tStop
+        tT1 := tEntry + t1R * riskL
+        tT2 := tEntry + t2R * riskL
+        tBar := bar_index
+        tStatus := "ACTIVE"
+        lastSigBar := bar_index
+        lastSigSide := "LONG"
+    else if shortSig and tSide != -1
+        openedShort := true
+        tSide := -1
+        tSideStr := "SHORT"
+        tEntry := close
+        tStop := close + stopAtr * atrV
+        float riskS = tStop - tEntry
+        tT1 := tEntry - t1R * riskS
+        tT2 := tEntry - t2R * riskS
+        tBar := bar_index
+        tStatus := "ACTIVE"
+        lastSigBar := bar_index
+        lastSigSide := "SHORT"
+    tradeUpdate := tStatus != statusBefore and not openedLong and not openedShort
+
+string eventStr = openedLong ? "LONG_SETUP" : openedShort ? "SHORT_SETUP" : tradeUpdate ? "TRADE_UPDATE" : "BAR_CLOSE"
+string stateCode = "LENS|" + syminfo.ticker + "|" + timeframe.period + "|" + regime + "|L" + str.tostring(longScore) + "|S" + str.tostring(shortScore) + "|" + tSideStr + ":" + tStatus
+
+// ═════════════════════════════════════════════════════════════════════════════
+// JSON PACKET FOR AI AGENTS (schema: ai-agent-lens/v1, see docs/PACKET_SCHEMA.md)
+// ═════════════════════════════════════════════════════════════════════════════
+f_packet() =>
+    string fp = format.mintick
+    string t  = str.format_time(time_close, "yyyy-MM-dd'T'HH:mm:ss'Z'", "UTC")
+    string pk = '{"schema":"ai-agent-lens/v1"'
+    pk += ',"event":"' + eventStr + '"'
+    pk += ',"symbol":"' + syminfo.prefix + ":" + syminfo.ticker + '"'
+    pk += ',"timeframe":"' + timeframe.period + '"'
+    pk += ',"time":"' + t + '"'
+    pk += ',"state_code":"' + stateCode + '"'
+    // Candle breakdown
+    pk += ',"candle":{"open":' + f_num(open, fp) + ',"high":' + f_num(high, fp) + ',"low":' + f_num(low, fp) + ',"close":' + f_num(close, fp)
+    pk += ',"volume":' + f_num(volume, "#.####") + ',"direction":"' + cDir + '"'
+    pk += ',"body_pct":' + f_num(cBodyPct, "#.#") + ',"upper_wick_pct":' + f_num(cUpPct, "#.#") + ',"lower_wick_pct":' + f_num(cDnPct, "#.#")
+    pk += ',"range_atr":' + f_num(cRangeAtr, "#.##") + ',"close_position_pct":' + f_num(cClosePos, "#.#") + ',"gap_pct":' + f_num(cGapPct, "#.###")
+    pk += ',"closed_above_prev_high":' + f_bool(close > high[1]) + ',"closed_below_prev_low":' + f_bool(close < low[1])
+    pk += ',"pattern":"' + cPattern + '"}'
+    // Recent candles, oldest first
+    string rc = "["
+    for k = recentCount - 1 to 0
+        rc += f_candleJson(k) + (k > 0 ? "," : "")
+    pk += ',"recent_candles":' + rc + "]"
+    // Context
+    pk += ',"regime":"' + regime + '"'
+    pk += ',"trend":{"ema_fast":' + f_num(emaF, fp) + ',"ema_mid":' + f_num(emaM, fp) + ',"ema_slow":' + f_num(emaS, fp)
+    pk += ',"stack":"' + stackStr + '","slow_slope":"' + slopeStr + '","htf":"' + htfTf + '","htf_bias":"' + htfBiasStr + '"}'
+    pk += ',"momentum":{"rsi":' + f_num(rsiV, "#.##") + ',"macd_hist":' + f_num(macdHist, "#.######") + ',"macd_hist_rising":' + f_bool(macdHist > macdHist[1]) + '}'
+    pk += ',"strength":{"adx":' + f_num(adxV, "#.##") + ',"di_plus":' + f_num(diPlus, "#.##") + ',"di_minus":' + f_num(diMinus, "#.##") + '}'
+    pk += ',"volatility":{"atr":' + f_num(atrV, fp) + ',"atr_percentile":' + f_num(atrPct, "#.#") + '}'
+    pk += ',"volume":{"relative":' + f_num(relVol, "#.##") + '}'
+    pk += ',"structure":{"bias":"' + structBias + '","event":"' + structEvent + '","last_swing_high":' + f_num(swingH1, fp) + ',"last_swing_low":' + f_num(swingL1, fp) + '}'
+    pk += ',"levels":{"prev_day_high":' + f_num(pdh, fp) + ',"prev_day_low":' + f_num(pdl, fp) + ',"vwap":' + f_num(vwapV, fp) + '}'
+    // Scores
+    pk += ',"scores":{"long":' + str.tostring(longScore) + ',"short":' + str.tostring(shortScore) + ',"threshold":' + str.tostring(scoreThreshold)
+    pk += ',"long_factors":{"trend":' + str.tostring(lTrend) + ',"momentum":' + str.tostring(lMom) + ',"strength":' + str.tostring(lStr) + ',"volume":' + str.tostring(lVol) + ',"htf":' + str.tostring(lHtf) + '}'
+    pk += ',"short_factors":{"trend":' + str.tostring(sTrend) + ',"momentum":' + str.tostring(sMom) + ',"strength":' + str.tostring(sStr) + ',"volume":' + str.tostring(sVol) + ',"htf":' + str.tostring(sHtf) + '}}'
+    // Trade map
+    pk += ',"trade":{"side":"' + tSideStr + '","status":"' + tStatus + '","entry":' + f_num(tEntry, fp) + ',"stop":' + f_num(tStop, fp)
+    pk += ',"target_1":' + f_num(tT1, fp) + ',"target_2":' + f_num(tT2, fp) + ',"bars_since_entry":' + (na(tBar) ? "null" : str.tostring(bar_index - tBar)) + '}'
+    pk += ',"last_setup":{"side":"' + lastSigSide + '","bars_ago":' + (na(lastSigBar) ? "null" : str.tostring(bar_index - lastSigBar)) + '}'
+    pk += '}'
+    pk
+
+bool wantPacket = packetMode == "Every bar close" or (packetMode == "Setups and trade updates" and eventStr != "BAR_CLOSE")
+if barstate.islast and (wantPacket or showPreview)
+    string packet = f_packet()
+    if wantPacket
+        alert(packet, alert.freq_once_per_bar_close)
+    if showPreview
+        var label prev = na
+        label.delete(prev)
+        prev := label.new(bar_index + 3, close, packet, style = label.style_label_left, color = color.new(C_HEAD, 0), textcolor = C_TEXT, size = size.tiny, textalign = text.align_left)
+
+// Static alerts for people who only want notifications (no JSON)
+alertcondition(openedLong, "AI Lens: LONG setup", "AI Agent Lens: LONG setup on {{ticker}} ({{interval}}) at {{close}}")
+alertcondition(openedShort, "AI Lens: SHORT setup", "AI Agent Lens: SHORT setup on {{ticker}} ({{interval}}) at {{close}}")
+
+// ═════════════════════════════════════════════════════════════════════════════
+// VISUALS
+// ═════════════════════════════════════════════════════════════════════════════
+plot(showEmas ? emaF : na, "EMA fast", color = color.new(#29B6F6, 0), linewidth = 1)
+plot(showEmas ? emaM : na, "EMA mid", color = color.new(#FFB300, 0), linewidth = 1)
+plot(showEmas ? emaS : na, "EMA slow", color = color.new(#AB47BC, 0), linewidth = 2)
+
+plot(showLevels ? pdh : na, "Prev day high", color = color.new(C_NEUT, 30), style = plot.style_stepline)
+plot(showLevels ? pdl : na, "Prev day low", color = color.new(C_NEUT, 30), style = plot.style_stepline)
+plot(showLevels ? vwapV : na, "VWAP", color = color.new(#FFFFFF, 50), linewidth = 1)
+plot(showLevels ? swingH1 : na, "Last swing high", color = color.new(C_BEAR, 60), style = plot.style_stepline)
+plot(showLevels ? swingL1 : na, "Last swing low", color = color.new(C_BULL, 60), style = plot.style_stepline)
+
+bool tradeOpen = showTrade and tSide != 0
+plot(tradeOpen ? tEntry : na, "Entry", color = color.new(C_TEXT, 20), style = plot.style_linebr)
+plot(tradeOpen ? tStop : na, "Stop", color = color.new(C_BEAR, 0), style = plot.style_linebr, linewidth = 2)
+plot(tradeOpen ? tT1 : na, "Target 1", color = color.new(C_BULL, 30), style = plot.style_linebr)
+plot(tradeOpen ? tT2 : na, "Target 2", color = color.new(C_BULL, 0), style = plot.style_linebr, linewidth = 2)
+
+if showMarkers and openedLong
+    label.new(bar_index, low, "LONG " + str.tostring(longScore), yloc = yloc.belowbar, style = label.style_label_up, color = C_BULL, textcolor = color.white, size = size.small)
+if showMarkers and openedShort
+    label.new(bar_index, high, "SHORT " + str.tostring(shortScore), yloc = yloc.abovebar, style = label.style_label_down, color = C_BEAR, textcolor = color.white, size = size.small)
+
+color regimeBg = regime == "TREND_UP" ? color.new(C_BULL, 93) : regime == "TREND_DOWN" ? color.new(C_BEAR, 93) : regime == "HIGH_VOLATILITY" ? color.new(C_WARN, 93) : na
+bgcolor(showRegimeBg ? regimeBg : na)
+
+// Data Window values (readable by agents that read the chart or exported data)
+plot(longScore, "Long score", color = C_BULL, display = display.data_window)
+plot(shortScore, "Short score", color = C_BEAR, display = display.data_window)
+plot(regimeCode, "Regime code (1 up, -1 down, 0 range, 2 high vol)", display = display.data_window)
+plot(htfBias, "HTF bias (1 up, -1 down, 0 flat)", display = display.data_window)
+plot(rsiV, "RSI", display = display.data_window)
+plot(adxV, "ADX", display = display.data_window)
+plot(relVol, "Relative volume", display = display.data_window)
+plot(atrPct, "ATR percentile", display = display.data_window)
+plot(tSide, "Trade side (1 long, -1 short, 0 flat)", display = display.data_window)
+
+// ═════════════════════════════════════════════════════════════════════════════
+// AGENT READOUT PANEL
+// ═════════════════════════════════════════════════════════════════════════════
+f_pos(string p) =>
+    switch p
+        "Top left"     => position.top_left
+        "Bottom right" => position.bottom_right
+        "Bottom left"  => position.bottom_left
+        => position.top_right
+
+f_size(string s) =>
+    switch s
+        "Tiny"   => size.tiny
+        "Normal" => size.normal
+        => size.small
+
+var table panel = table.new(f_pos(panelPosIn), 2, 20, bgcolor = C_BG, frame_color = C_HEAD, frame_width = 1, border_color = C_HEAD, border_width = 1)
+
+f_row(int r, string k, string v, color vc) =>
+    string ts = f_size(panelSizeIn)
+    table.cell(panel, 0, r, k, text_color = C_NEUT, text_halign = text.align_left, text_size = ts)
+    table.cell(panel, 1, r, v, text_color = vc, text_halign = text.align_left, text_size = ts)
+
+if showPanel and barstate.islast
+    string fp = format.mintick
+    color regimeCol = regime == "TREND_UP" ? C_BULL : regime == "TREND_DOWN" ? C_BEAR : regime == "HIGH_VOLATILITY" ? C_WARN : C_TEXT
+    color tradeCol  = tSideStr == "LONG" ? C_BULL : tSideStr == "SHORT" ? C_BEAR : C_TEXT
+    table.cell(panel, 0, 0, "AI AGENT LENS", text_color = color.white, bgcolor = C_HEAD, text_halign = text.align_left, text_size = f_size(panelSizeIn))
+    table.cell(panel, 1, 0, syminfo.ticker + " · " + timeframe.period, text_color = color.white, bgcolor = C_HEAD, text_halign = text.align_left, text_size = f_size(panelSizeIn))
+    f_row(1, "Regime", regime, regimeCol)
+    f_row(2, "Long score", str.tostring(longScore) + " / 100", longScore >= scoreThreshold ? C_BULL : C_TEXT)
+    f_row(3, "Short score", str.tostring(shortScore) + " / 100", shortScore >= scoreThreshold ? C_BEAR : C_TEXT)
+    f_row(4, "EMA stack · slope", stackStr + " · " + slopeStr, C_TEXT)
+    f_row(5, "HTF " + htfTf + " bias", htfBiasStr, htfBias == 1 ? C_BULL : htfBias == -1 ? C_BEAR : C_TEXT)
+    f_row(6, "RSI", f_num(rsiV, "#.#"), C_TEXT)
+    f_row(7, "MACD hist", f_num(macdHist, "#.####") + (macdHist > macdHist[1] ? " rising" : " falling"), C_TEXT)
+    f_row(8, "ADX (DI+ / DI-)", f_num(adxV, "#.#") + " (" + f_num(diPlus, "#.#") + " / " + f_num(diMinus, "#.#") + ")", C_TEXT)
+    f_row(9, "Relative volume", f_num(relVol, "#.##") + "x", C_TEXT)
+    f_row(10, "ATR · percentile", f_num(atrV, fp) + " · " + f_num(atrPct, "#") + "%", C_TEXT)
+    f_row(11, "Candle", cDir + " · " + cPattern, C_TEXT)
+    f_row(12, "Structure", structBias + " · " + structEvent, C_TEXT)
+    f_row(13, "Prev day H / L", f_num(pdh, fp) + " / " + f_num(pdl, fp), C_TEXT)
+    f_row(14, "VWAP", f_num(vwapV, fp), C_TEXT)
+    f_row(15, "Trade", tSideStr + " · " + tStatus, tradeCol)
+    f_row(16, "Entry / Stop", f_num(tEntry, fp) + " / " + f_num(tStop, fp), C_TEXT)
+    f_row(17, "T1 / T2", f_num(tT1, fp) + " / " + f_num(tT2, fp), C_TEXT)
+    f_row(18, "Last setup", lastSigSide + (na(lastSigBar) ? "" : " · " + str.tostring(bar_index - lastSigBar) + " bars ago"), C_TEXT)
+    f_row(19, "State", stateCode, C_WARN)
