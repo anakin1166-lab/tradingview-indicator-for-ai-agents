@@ -30,47 +30,47 @@ string G_RSK  = "Risk map"
 string G_AGT  = "AI agent packet"
 string G_VIS  = "Display"
 
-int    scoreThreshold = input.int(70, "Setup score threshold", minval = 50, maxval = 100, group = G_SIG, tooltip = "A LONG or SHORT setup fires when its score crosses this value on a closed bar.")
-bool   blockHighVol   = input.bool(true, "Block setups in HIGH_VOLATILITY regime", group = G_SIG)
-string htfTf          = input.timeframe("240", "Higher timeframe", group = G_SIG, tooltip = "Must be higher than the chart timeframe. Otherwise the HTF factor is neutral.")
-int    htfEmaLen      = input.int(50, "Higher timeframe EMA length", minval = 2, group = G_SIG)
+int    scoreThreshold = input.int(70, "Setup score threshold", minval = 50, maxval = 100, group = G_SIG, tooltip = "A LONG or SHORT setup fires when its score crosses this value on a closed bar.", display = display.none)
+bool   blockHighVol   = input.bool(true, "Block setups in HIGH_VOLATILITY regime", group = G_SIG, display = display.none)
+string htfTf          = input.timeframe("240", "Higher timeframe", group = G_SIG, tooltip = "Must be higher than the chart timeframe. Otherwise the HTF factor is neutral.", display = display.none)
+int    htfEmaLen      = input.int(50, "Higher timeframe EMA length", minval = 2, group = G_SIG, display = display.none)
 
-int    emaFastLen     = input.int(20, "Fast EMA", minval = 2, group = G_TRD)
-int    emaMidLen      = input.int(50, "Mid EMA", minval = 2, group = G_TRD)
-int    emaSlowLen     = input.int(200, "Slow EMA", minval = 2, group = G_TRD)
-int    slopeLen       = input.int(5, "Slow EMA slope lookback (bars)", minval = 1, group = G_TRD)
-int    rsiLen         = input.int(14, "RSI length", minval = 2, group = G_TRD)
-float  rsiOB          = input.float(75, "RSI overbought", group = G_TRD)
-float  rsiOS          = input.float(25, "RSI oversold", group = G_TRD)
-int    adxLen         = input.int(14, "ADX / DMI length", minval = 2, group = G_TRD)
-float  adxTrend       = input.float(20, "ADX trend threshold", group = G_TRD)
+int    emaFastLen     = input.int(20, "Fast EMA", minval = 2, group = G_TRD, display = display.none)
+int    emaMidLen      = input.int(50, "Mid EMA", minval = 2, group = G_TRD, display = display.none)
+int    emaSlowLen     = input.int(200, "Slow EMA", minval = 2, group = G_TRD, display = display.none)
+int    slopeLen       = input.int(5, "Slow EMA slope lookback (bars)", minval = 1, group = G_TRD, display = display.none)
+int    rsiLen         = input.int(14, "RSI length", minval = 2, group = G_TRD, display = display.none)
+float  rsiOB          = input.float(75, "RSI overbought", group = G_TRD, display = display.none)
+float  rsiOS          = input.float(25, "RSI oversold", group = G_TRD, display = display.none)
+int    adxLen         = input.int(14, "ADX / DMI length", minval = 2, group = G_TRD, display = display.none)
+float  adxTrend       = input.float(20, "ADX trend threshold", group = G_TRD, display = display.none)
 
-int    volLen         = input.int(20, "Volume average length", minval = 2, group = G_VOL)
-int    atrLen         = input.int(14, "ATR length", minval = 2, group = G_VOL)
-int    atrPctLen      = input.int(100, "ATR percentile lookback", minval = 10, group = G_VOL)
-float  highVolPct     = input.float(90, "HIGH_VOLATILITY when ATR percentile is at or above", minval = 50, maxval = 100, group = G_VOL)
+int    volLen         = input.int(20, "Volume average length", minval = 2, group = G_VOL, display = display.none)
+int    atrLen         = input.int(14, "ATR length", minval = 2, group = G_VOL, display = display.none)
+int    atrPctLen      = input.int(100, "ATR percentile lookback", minval = 10, group = G_VOL, display = display.none)
+float  highVolPct     = input.float(90, "HIGH_VOLATILITY when ATR percentile is at or above", minval = 50, maxval = 100, group = G_VOL, display = display.none)
 
-int    swingLen       = input.int(5, "Swing pivot strength (bars each side)", minval = 1, group = G_STR)
+int    swingLen       = input.int(5, "Swing pivot strength (bars each side)", minval = 1, group = G_STR, display = display.none)
 
-float  stopAtr        = input.float(1.5, "Stop distance (x ATR)", minval = 0.1, step = 0.1, group = G_RSK)
-float  t1R            = input.float(1.5, "Target 1 (R multiple)", minval = 0.1, step = 0.1, group = G_RSK)
-float  t2R            = input.float(3.0, "Target 2 (R multiple)", minval = 0.1, step = 0.1, group = G_RSK)
+float  stopAtr        = input.float(1.5, "Stop distance (x ATR)", minval = 0.1, step = 0.1, group = G_RSK, display = display.none)
+float  t1R            = input.float(1.5, "Target 1 (R multiple)", minval = 0.1, step = 0.1, group = G_RSK, display = display.none)
+float  t2R            = input.float(3.0, "Target 2 (R multiple)", minval = 0.1, step = 0.1, group = G_RSK, display = display.none)
 
-string packetMode     = input.string("Every bar close", "Send JSON packet", options = ["Every bar close", "Setups and trade updates", "Off"], group = G_AGT, tooltip = "Create ONE alert with condition 'Any alert() function call' and your agent's webhook URL.")
-int    recentCount    = input.int(5, "Recent candles in packet", minval = 1, maxval = 10, group = G_AGT)
-bool   showPreview    = input.bool(false, "Show packet preview on chart", group = G_AGT)
+string packetMode     = input.string("Every bar close", "Send JSON packet", options = ["Every bar close", "Setups and trade updates", "Off"], group = G_AGT, tooltip = "Create ONE alert with condition 'Any alert() function call' and your agent's webhook URL.", display = display.none)
+int    recentCount    = input.int(5, "Recent candles in packet", minval = 1, maxval = 10, group = G_AGT, display = display.none)
+bool   showPreview    = input.bool(false, "Show packet preview on chart", group = G_AGT, display = display.none)
 
-bool   showPanel      = input.bool(true, "Show Agent Readout panel", group = G_VIS)
-string panelModeIn    = input.string("Full", "Panel mode", options = ["Full", "Compact"], group = G_VIS)
-string panelPosIn     = input.string("Top right", "Panel position", options = ["Top right", "Top left", "Bottom right", "Bottom left", "Middle right"], group = G_VIS)
-string panelSizeIn    = input.string("Small", "Panel text size", options = ["Tiny", "Small", "Normal"], group = G_VIS)
-bool   showMarkers    = input.bool(true, "Show setup labels", group = G_VIS)
-bool   showTrade      = input.bool(true, "Show position boxes (entry, stop, targets)", group = G_VIS)
-bool   showEmas       = input.bool(true, "Show EMA ribbon", group = G_VIS)
-bool   showLevels     = input.bool(true, "Show key levels (previous day, VWAP)", group = G_VIS)
-bool   showStructure  = input.bool(true, "Show swing points and breaks", group = G_VIS)
-bool   colorCandles   = input.bool(false, "Color candles by score", group = G_VIS)
-bool   showRegimeBg   = input.bool(false, "Shade background by regime", group = G_VIS)
+bool   showPanel      = input.bool(true, "Show Agent Readout panel", group = G_VIS, display = display.none)
+string panelModeIn    = input.string("Full", "Panel mode", options = ["Full", "Compact"], group = G_VIS, display = display.none)
+string panelPosIn     = input.string("Top right", "Panel position", options = ["Top right", "Top left", "Bottom right", "Bottom left", "Middle right"], group = G_VIS, display = display.none)
+string panelSizeIn    = input.string("Small", "Panel text size", options = ["Tiny", "Small", "Normal"], group = G_VIS, display = display.none)
+bool   showMarkers    = input.bool(true, "Show setup labels", group = G_VIS, display = display.none)
+bool   showTrade      = input.bool(true, "Show position boxes (entry, stop, targets)", group = G_VIS, display = display.none)
+bool   showEmas       = input.bool(true, "Show EMA ribbon", group = G_VIS, display = display.none)
+bool   showLevels     = input.bool(true, "Show key levels (previous day, VWAP)", group = G_VIS, display = display.none)
+bool   showStructure  = input.bool(true, "Show swing points and breaks", group = G_VIS, display = display.none)
+bool   colorCandles   = input.bool(false, "Color candles by score", group = G_VIS, display = display.none)
+bool   showRegimeBg   = input.bool(false, "Shade background by regime", group = G_VIS, display = display.none)
 
 // ═════════════════════════════════════════════════════════════════════════════
 // COLORS
@@ -387,20 +387,20 @@ alertcondition(openedShort, "AI Lens: SHORT setup", "AI Agent Lens: SHORT setup 
 // ═════════════════════════════════════════════════════════════════════════════
 // VISUALS: EMA RIBBON, LEVELS, STRUCTURE
 // ═════════════════════════════════════════════════════════════════════════════
-pFast = plot(showEmas ? emaF : na, "EMA fast", color = color.new(C_CYAN, 10), linewidth = 1)
-pMid  = plot(showEmas ? emaM : na, "EMA mid", color = color.new(C_WARN, 10), linewidth = 1)
-fill(pFast, pMid, color = emaF > emaM ? color.new(C_BULL, 82) : color.new(C_BEAR, 82), title = "EMA ribbon")
-plot(showEmas ? emaS : na, "EMA slow glow", color = color.new(C_PURPLE, 85), linewidth = 7)
-plot(showEmas ? emaS : na, "EMA slow", color = color.new(C_PURPLE, 0), linewidth = 2)
+pFast = plot(showEmas ? emaF : na, "EMA fast", color = color.new(C_CYAN, 10), linewidth = 1, display = display.pane)
+pMid  = plot(showEmas ? emaM : na, "EMA mid", color = color.new(C_WARN, 10), linewidth = 1, display = display.pane)
+fill(pFast, pMid, color = emaF > emaM ? color.new(C_BULL, 82) : color.new(C_BEAR, 82), title = "EMA ribbon", display = display.pane)
+plot(showEmas ? emaS : na, "EMA slow glow", color = color.new(C_PURPLE, 85), linewidth = 7, display = display.pane)
+plot(showEmas ? emaS : na, "EMA slow", color = color.new(C_PURPLE, 0), linewidth = 2, display = display.pane)
 
-plot(showLevels ? pdh : na, "Prev day high", color = color.new(C_NEUT, 20), style = plot.style_circles, linewidth = 1)
-plot(showLevels ? pdl : na, "Prev day low", color = color.new(C_NEUT, 20), style = plot.style_circles, linewidth = 1)
-plot(showLevels ? vwapV : na, "VWAP", color = color.new(#FFFFFF, 55), linewidth = 1)
+plot(showLevels ? pdh : na, "Prev day high", color = color.new(C_NEUT, 20), style = plot.style_circles, linewidth = 1, display = display.pane)
+plot(showLevels ? pdl : na, "Prev day low", color = color.new(C_NEUT, 20), style = plot.style_circles, linewidth = 1, display = display.pane)
+plot(showLevels ? vwapV : na, "VWAP", color = color.new(#FFFFFF, 55), linewidth = 1, display = display.pane)
 
-plotshape(showStructure and not na(ph) ? ph : na, "Swing high", shape.circle, location.absolute, color.new(C_BEAR, 30), offset = -swingLen, size = size.tiny)
-plotshape(showStructure and not na(pl) ? pl : na, "Swing low", shape.circle, location.absolute, color.new(C_BULL, 30), offset = -swingLen, size = size.tiny)
-plotshape(showStructure and breakUp and barstate.isconfirmed, "Break up", shape.triangleup, location.belowbar, color.new(C_BULL, 35), size = size.tiny, text = "BOS", textcolor = color.new(C_BULL, 35))
-plotshape(showStructure and breakDown and barstate.isconfirmed, "Break down", shape.triangledown, location.abovebar, color.new(C_BEAR, 35), size = size.tiny, text = "BOS", textcolor = color.new(C_BEAR, 35))
+plotshape(showStructure and not na(ph) ? ph : na, "Swing high", shape.circle, location.absolute, color.new(C_BEAR, 30), offset = -swingLen, size = size.tiny, display = display.pane)
+plotshape(showStructure and not na(pl) ? pl : na, "Swing low", shape.circle, location.absolute, color.new(C_BULL, 30), offset = -swingLen, size = size.tiny, display = display.pane)
+plotshape(showStructure and breakUp and barstate.isconfirmed, "Break up", shape.triangleup, location.belowbar, color.new(C_BULL, 35), size = size.tiny, text = "BOS", textcolor = color.new(C_BULL, 35), display = display.pane)
+plotshape(showStructure and breakDown and barstate.isconfirmed, "Break down", shape.triangledown, location.abovebar, color.new(C_BEAR, 35), size = size.tiny, text = "BOS", textcolor = color.new(C_BEAR, 35), display = display.pane)
 
 color scoreCol = longScore >= scoreThreshold ? C_BULL : shortScore >= scoreThreshold ? C_BEAR : longScore > shortScore ? color.new(C_BULL, 55) : shortScore > longScore ? color.new(C_BEAR, 55) : C_NEUT
 barcolor(colorCandles ? scoreCol : na)
@@ -501,136 +501,86 @@ f_size(string s) =>
         "Normal" => size.normal
         => size.small
 
-// Text progress bar, e.g. "██████░░░░"
-f_bar(float v, float maxV, int len) =>
-    int filled = math.max(0, math.min(len, int(math.round(v / maxV * len))))
-    str.repeat("█", filled) + str.repeat("░", len - filled)
+
+// "TREND_UP" -> "Trend up"
+f_title(string s) =>
+    string t = str.lower(str.replace_all(s, "_", " "))
+    str.length(t) > 0 ? str.upper(str.substring(t, 0, 1)) + str.substring(t, 1) : t
+
+// How many of the five factors are clearly aligned (12+ of 20 points)
+f_aligned(int a, int b, int c, int d, int e) =>
+    (a >= 12 ? 1 : 0) + (b >= 12 ? 1 : 0) + (c >= 12 ? 1 : 0) + (d >= 12 ? 1 : 0) + (e >= 12 ? 1 : 0)
+
+color P_BG    = #0E1117
+color P_LINE  = #1C2230
+color P_KEY   = #8B93A7
+color P_VAL   = #E6E9EF
 
 string PANEL_SIZE = f_size(panelSizeIn)
-int    PANEL_ROWS = 26
-var table panel = table.new(f_pos(panelPosIn), 3, PANEL_ROWS, bgcolor = C_BG, frame_color = color.new(C_CYAN, 60), frame_width = 1, border_color = C_BG, border_width = 2)
+string HERO_SIZE  = panelSizeIn == "Tiny" ? size.normal : size.large
+int    PANEL_ROWS = 14
+var table panel = table.new(f_pos(panelPosIn), 2, PANEL_ROWS, bgcolor = P_BG, frame_color = #232A3A, frame_width = 1, border_color = P_LINE, border_width = 1)
 
-f_cell(int c, int r, string txt, color tc, color bg, bool mono, string halign) =>
-    table.cell(panel, c, r, txt, text_color = tc, bgcolor = bg, text_halign = halign, text_size = PANEL_SIZE, text_font_family = mono ? font.family_monospace : font.family_default)
+f_cell(int c, int r, string txt, color tc, color bg, string sz, string halign) =>
+    table.cell(panel, c, r, txt, text_color = tc, bgcolor = bg, text_halign = halign, text_size = sz)
 
-// Full-width row
-f_wide(int r, string txt, color tc, color bg) =>
-    f_cell(0, r, txt, tc, bg, false, text.align_left)
-    table.merge_cells(panel, 0, r, 2, r)
+f_row(int r, string k, string v, color vc) =>
+    f_cell(0, r, k, P_KEY, P_BG, PANEL_SIZE, text.align_left)
+    f_cell(1, r, v, vc, P_BG, PANEL_SIZE, text.align_right)
 
-// Section header
-f_section(int r, string a, string b, string c) =>
-    f_cell(0, r, a, C_CYAN, C_SECT, false, text.align_left)
-    f_cell(1, r, b, C_NEUT, C_SECT, false, text.align_left)
-    f_cell(2, r, c, C_NEUT, C_SECT, false, text.align_left)
-
-// Key + value spanning two columns
-f_kv(int r, string k, string v, color vc) =>
-    f_cell(0, r, k, C_NEUT, C_BG, false, text.align_left)
-    f_cell(1, r, v, vc, C_BG, false, text.align_left)
-    table.merge_cells(panel, 1, r, 2, r)
-
-// Key + two values
-f_k2(int r, string k, string v1, color c1, string v2, color c2) =>
-    f_cell(0, r, k, C_NEUT, C_BG, false, text.align_left)
-    f_cell(1, r, v1, c1, C_BG, true, text.align_left)
-    f_cell(2, r, v2, c2, C_BG, true, text.align_left)
+f_wide(int r, string txt, color tc, color bg, string sz) =>
+    f_cell(0, r, txt, tc, bg, sz, text.align_center)
+    table.merge_cells(panel, 0, r, 1, r)
 
 if showPanel and barstate.islast
-    table.clear(panel, 0, 0, 2, PANEL_ROWS - 1)
+    table.clear(panel, 0, 0, 1, PANEL_ROWS - 1)
     bool full = panelModeIn == "Full"
     string fp = format.mintick
-    color regimeCol = regime == "TREND_UP" ? C_BULL : regime == "TREND_DOWN" ? C_BEAR : regime == "HIGH_VOLATILITY" ? C_WARN : C_TEXT
-    string regimeTxt = regime == "TREND_UP" ? "▲ TREND UP" : regime == "TREND_DOWN" ? "▼ TREND DOWN" : regime == "HIGH_VOLATILITY" ? "⚡ HIGH VOLATILITY" : "◆ RANGE"
-    color lCol = longScore >= scoreThreshold ? C_BULL : color.new(C_BULL, 45)
-    color sCol = shortScore >= scoreThreshold ? C_BEAR : color.new(C_BEAR, 45)
+    bool longLeads = tSide == 1 or (tSide == 0 and longScore >= shortScore)
+    int lead = longLeads ? longScore : shortScore
+    int aligned = longLeads ? f_aligned(lTrend, lMom, lStr, lVol, lHtf) : f_aligned(sTrend, sMom, sStr, sVol, sHtf)
+
+    // Hero: the one thing to know
+    string hero = tSide == 1 ? "LONG   " + str.tostring(longScore) : tSide == -1 ? "SHORT   " + str.tostring(shortScore) : "WAIT"
+    color heroBg = tSide == 1 ? C_BULL : tSide == -1 ? C_BEAR : #1A1F2B
+    color heroTc = tSide == 1 ? #06140C : tSide == -1 ? color.white : P_VAL
+    string sub = tSide != 0 ? (tStatus == "ACTIVE" ? "Setup active" : "Setup active · " + f_title(tStatus)) : lead >= scoreThreshold - 15 ? (longLeads ? "Long" : "Short") + " building · " + str.tostring(lead) + " of " + str.tostring(scoreThreshold) : "No confluence yet"
+    color regimeCol = regime == "TREND_UP" ? C_BULL : regime == "TREND_DOWN" ? C_BEAR : regime == "HIGH_VOLATILITY" ? C_WARN : P_VAL
+
     int r = 0
+    f_cell(0, r, "AI AGENT LENS", C_CYAN, P_BG, size.tiny, text.align_left)
+    f_cell(1, r, syminfo.ticker + "  ·  " + timeframe.period, P_KEY, P_BG, size.tiny, text.align_right)
+    r += 1
+    f_wide(r, hero, heroTc, heroBg, HERO_SIZE)
+    r += 1
+    f_wide(r, sub, P_KEY, P_BG, PANEL_SIZE)
+    r += 1
+    f_row(r, "Regime", f_title(regime), regimeCol)
+    r += 1
+    f_row(r, "Long / Short", str.tostring(longScore) + "  /  " + str.tostring(shortScore), longScore > shortScore ? C_BULL : shortScore > longScore ? C_BEAR : P_VAL)
+    r += 1
+    f_row(r, "Confluence", str.tostring(aligned) + " of 5 aligned", aligned >= 4 ? C_BULL : aligned >= 3 ? C_WARN : P_KEY)
+    r += 1
 
-    // Header
-    f_cell(0, r, "◆ AI AGENT LENS", C_CYAN, C_HEAD, false, text.align_left)
-    f_cell(1, r, syminfo.ticker + " · " + timeframe.period, C_TEXT, C_HEAD, false, text.align_right)
-    table.merge_cells(panel, 1, r, 2, r)
-    r += 1
-    f_kv(r, "Regime", regimeTxt, regimeCol)
-    r += 1
-    f_k2(r, "Long", str.tostring(longScore), lCol, f_bar(longScore, 100, 10), lCol)
-    r += 1
-    f_k2(r, "Short", str.tostring(shortScore), sCol, f_bar(shortScore, 100, 10), sCol)
-    r += 1
+    if tSide != 0
+        float riskU = tSide == 1 ? tEntry - tStop : tStop - tEntry
+        float rNow = riskU > 0 ? (tSide == 1 ? close - tEntry : tEntry - close) / riskU : na
+        f_row(r, "Entry", f_num(tEntry, fp), P_VAL)
+        r += 1
+        f_row(r, "Stop", f_num(tStop, fp), C_BEAR)
+        r += 1
+        f_row(r, "Targets", f_num(tT1, fp) + "  /  " + f_num(tT2, fp), C_BULL)
+        r += 1
+        f_row(r, "Open P&L", na(rNow) ? "n/a" : (rNow >= 0 ? "+" : "") + str.tostring(rNow, "0.00") + "R", na(rNow) ? P_KEY : rNow >= 0 ? C_BULL : C_BEAR)
+        r += 1
+    else if tSideStr != "NONE"
+        f_row(r, "Last trade", f_title(tSideStr) + " · " + f_title(tStatus), P_KEY)
+        r += 1
 
     if full
-        // Factors
-        f_section(r, "FACTORS", "LONG", "SHORT")
+        string ctx = "HTF " + (htfBiasStr == "N/A" ? "n/a" : str.lower(htfBiasStr)) + "  ·  RSI " + f_num(rsiV, "0") + "  ·  ADX " + f_num(adxV, "0")
+        f_row(r, "Context", ctx, P_VAL)
         r += 1
-        f_k2(r, "Trend", f_bar(lTrend, 20, 5) + " " + str.tostring(lTrend), color.new(C_BULL, 15), f_bar(sTrend, 20, 5) + " " + str.tostring(sTrend), color.new(C_BEAR, 15))
+        f_row(r, "Candle", f_title(cPattern == "NONE" ? cDir : cPattern), cDir == "bull" ? C_BULL : cDir == "bear" ? C_BEAR : P_VAL)
         r += 1
-        f_k2(r, "Momentum", f_bar(lMom, 20, 5) + " " + str.tostring(lMom), color.new(C_BULL, 15), f_bar(sMom, 20, 5) + " " + str.tostring(sMom), color.new(C_BEAR, 15))
-        r += 1
-        f_k2(r, "Strength", f_bar(lStr, 20, 5) + " " + str.tostring(lStr), color.new(C_BULL, 15), f_bar(sStr, 20, 5) + " " + str.tostring(sStr), color.new(C_BEAR, 15))
-        r += 1
-        f_k2(r, "Volume", f_bar(lVol, 20, 5) + " " + str.tostring(lVol), color.new(C_BULL, 15), f_bar(sVol, 20, 5) + " " + str.tostring(sVol), color.new(C_BEAR, 15))
-        r += 1
-        f_k2(r, "HTF " + htfTf, f_bar(lHtf, 20, 5) + " " + str.tostring(lHtf), color.new(C_BULL, 15), f_bar(sHtf, 20, 5) + " " + str.tostring(sHtf), color.new(C_BEAR, 15))
-        r += 1
-
-        // Market
-        f_section(r, "MARKET", "", "")
-        r += 1
-        f_kv(r, "EMA stack", stackStr + " · " + slopeStr, stackStr == "BULLISH" ? C_BULL : stackStr == "BEARISH" ? C_BEAR : C_TEXT)
-        r += 1
-        f_kv(r, "HTF bias", htfBiasStr, htfBias == 1 ? C_BULL : htfBias == -1 ? C_BEAR : C_TEXT)
-        r += 1
-        string rsiZone = rsiV >= rsiOB ? "overbought" : rsiV <= rsiOS ? "oversold" : rsiV > 50 ? "bullish" : "bearish"
-        f_k2(r, "RSI", f_num(rsiV, "#.#"), C_TEXT, rsiZone, rsiV > 50 ? color.new(C_BULL, 20) : color.new(C_BEAR, 20))
-        r += 1
-        f_k2(r, "ADX", f_num(adxV, "#.#"), C_TEXT, adxV >= adxTrend ? "trending" : "weak", adxV >= adxTrend ? C_WARN : C_NEUT)
-        r += 1
-        string volTxt = na(relVol) ? "n/a" : relVol >= 1.5 ? "high" : relVol >= 1.0 ? "above avg" : "below avg"
-        f_k2(r, "Volume", f_num(relVol, "#.##") + "x", C_TEXT, volTxt, relVol >= 1.0 ? C_WARN : C_NEUT)
-        r += 1
-        f_k2(r, "Volatility", f_num(atrPct, "#") + " pct", C_TEXT, "ATR " + f_num(atrV, fp), C_NEUT)
-        r += 1
-        f_kv(r, "Candle", cPattern == "NONE" ? cDir : cPattern, cDir == "bull" ? C_BULL : cDir == "bear" ? C_BEAR : C_TEXT)
-        r += 1
-        f_kv(r, "Structure", structBias + (structEvent == "NONE" ? "" : " · " + structEvent), structBias == "BULLISH" ? C_BULL : structBias == "BEARISH" ? C_BEAR : C_TEXT)
-        r += 1
-
-        // Trade
-        f_section(r, "TRADE", "", "")
-        r += 1
-        color tradeCol = tSideStr == "LONG" ? C_BULL : tSideStr == "SHORT" ? C_BEAR : C_TEXT
-        f_kv(r, "Position", tSideStr + " · " + tStatus, tradeCol)
-        r += 1
-        float riskU = tSide == 1 ? tEntry - tStop : tSide == -1 ? tStop - tEntry : na
-        float rNow = tSide == 1 and riskU > 0 ? (close - tEntry) / riskU : tSide == -1 and riskU > 0 ? (tEntry - close) / riskU : na
-        f_k2(r, "Entry", f_num(tEntry, fp), C_TEXT, na(rNow) ? "" : (rNow >= 0 ? "+" : "") + str.tostring(rNow, "#.##") + "R now", na(rNow) ? C_NEUT : rNow >= 0 ? C_BULL : C_BEAR)
-        r += 1
-        f_kv(r, "Stop", f_num(tStop, fp), color.new(C_BEAR, 10))
-        r += 1
-        f_k2(r, "Targets", f_num(tT1, fp), color.new(C_BULL, 10), f_num(tT2, fp), color.new(C_BULL, 10))
-        r += 1
-
-    // Agent signal footer
-    string sig = ""
-    color  sigBg = C_HEAD
-    color  sigTc = C_TEXT
-    if tSide == 1
-        sig := "▲ LONG ACTIVE · " + tStatus
-        sigBg := color.new(C_BULL, 20)
-        sigTc := #0B0E14
-    else if tSide == -1
-        sig := "▼ SHORT ACTIVE · " + tStatus
-        sigBg := color.new(C_BEAR, 20)
-        sigTc := color.white
-    else if longScore >= scoreThreshold - 15 and longScore > shortScore
-        sig := "◔ LONG BUILDING · " + str.tostring(longScore) + "/" + str.tostring(scoreThreshold)
-        sigBg := color.new(C_BULL, 75)
-    else if shortScore >= scoreThreshold - 15 and shortScore > longScore
-        sig := "◔ SHORT BUILDING · " + str.tostring(shortScore) + "/" + str.tostring(scoreThreshold)
-        sigBg := color.new(C_BEAR, 75)
-    else
-        sig := "◌ NO SETUP · waiting for confluence"
-    f_wide(r, "AGENT SIGNAL   " + sig, sigTc, sigBg)
-    r += 1
-    if full
-        f_wide(r, stateCode, color.new(C_WARN, 10), C_SECT)
+        f_row(r, "Structure", f_title(structBias) + (structEvent == "NONE" ? "" : " · " + f_title(structEvent)), structBias == "BULLISH" ? C_BULL : structBias == "BEARISH" ? C_BEAR : P_VAL)

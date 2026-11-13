@@ -157,7 +157,7 @@ The example files are illustrative, not live market data or a real trade.
 
 | Element | What it shows |
 |---|---|
-| **Agent Readout panel** | Regime, long and short scores with progress bars, the five factors for each side, market context, the open trade with live R multiple, and the current agent signal |
+| **Agent Readout panel** | A clean signal card: LONG, SHORT or WAIT, regime, scores, confluence, the open trade with live R multiple, and market context |
 | **Position boxes** | Every setup is drawn like TradingView's long/short tool: a red risk box (entry to stop) and a green reward box (entry to target 2) with a dashed target 1 line. Boxes extend while the trade is open and stop where it closed |
 | **Price tags** | ENTRY, STOP, T1 and T2 tags on the right of the open trade |
 | **Setup labels** | ▲ LONG 81 / ▼ SHORT 77. Hover a label to see the factor breakdown behind the score |
@@ -168,17 +168,21 @@ The example files are illustrative, not live market data or a real trade.
 
 ### The Agent Readout panel
 
-| Section | Rows |
+A clean signal card in the corner of the chart:
+
+| Row | Shows |
 |---|---|
 | Header | AI AGENT LENS, symbol and timeframe |
-| Scores | Regime, long score and short score with 10-step bars |
-| Factors | Trend, momentum, strength, volume and higher timeframe, long versus short, each with a 5-step bar |
-| Market | EMA stack and slope, HTF bias, RSI zone, ADX strength, relative volume, volatility percentile, candle pattern, structure |
-| Trade | Position and status, entry with live R multiple, stop, targets |
-| Agent signal | ▲ LONG ACTIVE, ▼ SHORT ACTIVE, ◔ BUILDING (score within 15 points of the threshold) or ◌ NO SETUP |
-| State | `LENS\|HYPEUSDT.P\|60\|TREND_UP\|L92\|S0\|LONG:ACTIVE` |
+| Signal | **LONG**, **SHORT** or **WAIT** in large type, with the score |
+| Status | Setup active, target 1 hit, long building (64 of 70), or no confluence yet |
+| Regime | Trend up, trend down, range, high volatility |
+| Long / Short | Both scores |
+| Confluence | How many of the five factors are clearly aligned |
+| Entry, Stop, Targets, Open P&L | The open trade and its live R multiple (shown only while a trade is open) |
+| Context | Higher-timeframe bias, RSI, ADX |
+| Candle, Structure | Current candle pattern and market structure |
 
-Switch **Panel mode** to Compact to keep only the header, scores and agent signal. The same values also appear in TradingView's **Data Window**.
+Switch **Panel mode** to Compact to keep only the signal, regime, scores and confluence. The indicator keeps the chart's status line clean (no input values printed next to its name), and every value is also in TradingView's **Data Window**.
 
 ---
 

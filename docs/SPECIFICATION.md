@@ -183,7 +183,7 @@ Swing highs and lows are confirmed pivots with 5 bars on each side (`ta.pivothig
 |---|---|
 | JSON packet | `alert()` once per bar close. Schema in [PACKET_SCHEMA.md](PACKET_SCHEMA.md) |
 | Static alerts | "AI Lens: LONG setup" and "AI Lens: SHORT setup" alert conditions |
-| Agent Readout panel | Table on the chart: scores with bars, factor breakdown, market context, trade with live R multiple, agent signal and state code (Full or Compact mode) |
+| Agent Readout panel | Signal card on the chart: LONG / SHORT / WAIT, status, regime, scores, factors aligned (12+ of 20 points), open trade with live R multiple, context, candle and structure (Full or Compact mode) |
 | Data Window | Long score, short score, regime code, HTF bias, RSI, ADX, relative volume, ATR percentile, trade side |
 | Chart drawings | EMA ribbon and EMA 200, previous day high/low, VWAP, swing points, structure breaks, LONG/SHORT score labels with factor tooltips, risk and reward position boxes with price tags |
 
