@@ -77,7 +77,7 @@ Pick one.
 #### Option A: Claude Code with Fable 5.2 (recommended)
 
 ```bash
-git clone https://github.com/roan-maverick/tradingview-indicator-for-ai-agents
+git clone https://github.com/anakin1166-lab/tradingview-indicator-for-ai-agents
 cd tradingview-indicator-for-ai-agents
 
 # 1. Start the receiver (Python 3, no installs)

@@ -1,6 +1,6 @@
 // This source code is released under the MIT License: https://opensource.org/licenses/MIT
 // AI Agent Lens: a TradingView indicator built for AI agents.
-// https://github.com/roan-maverick/tradingview-indicator-for-ai-agents
+// https://github.com/anakin1166-lab/tradingview-indicator-for-ai-agents
 //
 // What it does
 //   Breaks down every closed candle into clean, structured data (candle anatomy, pattern,
